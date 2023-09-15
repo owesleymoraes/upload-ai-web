@@ -1,18 +1,12 @@
-import React, {
-  ChangeEvent,
-  useState,
-  useMemo,
-  FormEvent,
-  useRef,
-} from "react";
-import { Button } from "./button";
-import { Label } from "./label";
-import { Separator } from "./separator";
-import { Textarea } from "./textarea";
-import { FileVideo, Upload } from "lucide-react";
+import { ChangeEvent, useState, useMemo, FormEvent, useRef } from "react";
+import { Label } from "./ui/label";
+import { api } from "@/lib/axios";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
 import { fetchFile } from "@ffmpeg/util";
 import { getFFmpeg } from "@/lib/ffmpeg";
-import { api } from "@/lib/axios";
+import { Separator } from "./ui/separator";
+import { FileVideo, Upload } from "lucide-react";
 
 type Status = "waiting" | "converting" | "uploading" | "generating" | "success";
 const statusMessages = {
@@ -23,7 +17,11 @@ const statusMessages = {
   success: "Sucesso!",
 };
 
-export function VideoInputForm() {
+interface VideoInputFormProps {
+  onVideoUpload: (videoId: string) => void;
+}
+
+export function VideoInputForm(props: VideoInputFormProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("waiting");
 
@@ -104,6 +102,7 @@ export function VideoInputForm() {
     });
 
     setStatus("success");
+    props.onVideoUpload(videoId);
   }
 
   // amarra a alteração dessa variável unicamente quando a sua dependência for alterada.
