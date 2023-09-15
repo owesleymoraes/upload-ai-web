@@ -12,9 +12,21 @@ import { Textarea } from "./textarea";
 import { FileVideo, Upload } from "lucide-react";
 import { fetchFile } from "@ffmpeg/util";
 import { getFFmpeg } from "@/lib/ffmpeg";
+import { api } from "@/lib/axios";
+
+type Status = "waiting" | "converting" | "uploading" | "generating" | "success";
+const statusMessages = {
+  waiting: " Carregar vídeo",
+  converting: "Convertendo...",
+  uploading: "Carregando...",
+  generating: "Transcrevendo...",
+  success: "Sucesso!",
+};
 
 export function VideoInputForm() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<Status>("waiting");
+
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   async function convertVideoToAudio(video: File) {
@@ -76,15 +88,30 @@ export function VideoInputForm() {
     }
 
     // converter o vídeo em audio
+    setStatus("converting");
     const audioFile = await convertVideoToAudio(videoFile);
-    console.log(audioFile, prompt);
+
+    const data = new FormData();
+    data.append("file", audioFile);
+
+    setStatus("uploading");
+    const response = await api.post("/videos", data);
+    const videoId = response.data.video.id;
+
+    setStatus("generating");
+    await api.post(`videos/${videoId}/transcription`, {
+      prompt,
+    });
+
+    setStatus("success");
   }
 
-  // amarro a alteração dessa variável unicamente quando a sua dependência for alterada.
+  // amarra a alteração dessa variável unicamente quando a sua dependência for alterada.
   const previewUrl = useMemo(() => {
     if (!videoFile) {
       return null;
     }
+    setStatus("waiting");
     return URL.createObjectURL(videoFile);
   }, [videoFile]);
 
@@ -119,14 +146,26 @@ export function VideoInputForm() {
         <Label htmlFor="transcription_prompt">Prompt de transcrição</Label>
         <Textarea
           ref={promptInputRef}
+          disabled={status !== "waiting"}
           placeholder="Inclua palavras-chave mencionadas no vídeo separadas por vírgula (,)"
           id="transcription_prompt"
           className="h-20 leading-relaxed resize-none"
         />
       </div>
-      <Button type="submit" className="w-full">
-        Carregar vídeo
-        <Upload className="w-4 h-4 ml-4" />
+      <Button
+        data-success={status === "success"}
+        disabled={status !== "waiting"}
+        type="submit"
+        className="w-full data-[success=true]:bg-white"
+      >
+        {status === "waiting" ? (
+          <>
+            {statusMessages[status]}
+            <Upload className="w-4 h-4 ml-4" />
+          </>
+        ) : (
+          statusMessages[status]
+        )}
       </Button>
     </form>
   );
